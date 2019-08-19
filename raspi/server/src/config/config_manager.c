@@ -17,15 +17,19 @@ void add_subscriber(Config *config, char *key, ClientData *data) {
 	set_value(config->key_subscribers, key, data, sizeof(ClientData));
 	size_t value_size;
 	void *value = get_value(config->key_values, key, &value_size);
-	if (send_value_to_client(value, value_size, data) > 0)
-		set_value(config->key_subscribers, key, add_client_to_list(data, get_value(config->key_subscribers, key, sizeof(ClientSlot))), sizeof(ClientSlot));
+	if (send_value_to_client(value, value_size, data) > 0) {
+		size_t size;
+		ClientSlot *client_list = add_client_to_list(data, (ClientSlot*) get_value(config->key_subscribers, key, &size));
+		set_value(config->key_subscribers, key, client_list, sizeof(ClientSlot));
+	}
 }
 
 // Sets the value for a given key and broadcasts that value to all the subscribed clients
 void set_config_value(Config *config, char *key, void* value, size_t size) {
 	printf("Setting key %s to value new value", key);
-	set_config_value(config->key_values, key, value, size);
-	send_to_all_clients_in_list(get_value(config->key_subscribers, key, sizeof(ClientSlot)), value, size);
+	set_value(config->key_values, key, value, size);
+	size_t _size;
+	send_to_all_clients_in_list(get_value(config->key_subscribers, key, &_size), value, size);
 }
 
 // Saves the config to a persistent file

@@ -15,7 +15,7 @@ int send_client_data(ClientData *data, void *to_send, size_t size) {
     while (bytes_written < size) {
         ssize_t result = write(data->socket_id, to_send + bytes_written, size - bytes_written);
         if (result < 0) {
-            fprintf("Socket send error on FD %d, closing connection.\n", data->socket_id);
+            fprintf(stderr, "Socket send error on FD %d, closing connection.\n", data->socket_id);
             end_client(data);
             return -1;
         }
