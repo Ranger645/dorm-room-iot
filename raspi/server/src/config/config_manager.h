@@ -16,6 +16,7 @@ Config *init_config();
 void add_subscriber(Config *config, char *key, ClientData *data);
 void set_config_value(Config *config, char *key, void* value, size_t size);
 void save_persistent_config(Config *config);
+void reap_dead_subscribers();
 void clean_config(Config *config);
 
 #endif

@@ -6,7 +6,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <pthread.h>
+#include <errno.h>
+#include <string.h>
+#include <inttypes.h>
 
 typedef struct ClientData {
 	struct sockaddr_in *client;
@@ -25,6 +29,7 @@ typedef struct ClientSlot {
 
 int send_client_data(ClientData *data, void *to_send, size_t size); // makes sure all data is sent, if failure, closes client.
 void end_client(ClientData *data); // sets continue_client to 0 with lock
+void check_error(int status);
 
 // Client list functions:
 ClientSlot *add_client_to_list(ClientData *data, ClientSlot *list);

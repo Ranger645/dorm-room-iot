@@ -9,6 +9,8 @@
 // Compiler
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
+#include <Led_Grid.h>
+#include <arduinoFFT.h>
 
 #define UDP_PORT 10101
 #define SERVER_PORT 10101

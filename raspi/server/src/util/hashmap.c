@@ -10,7 +10,7 @@ HashMap *create_hashmap() {
 
 void set_value(HashMap *map, char *key, void *value, size_t n) {
     Slot *new_slot = (Slot*) malloc(sizeof(Slot));
-    char *new_key = (char*) malloc(sizeof(char) * strlen(key) + 1);
+    char *new_key = (char*) malloc(sizeof(char) * (strlen(key) + 1));
     strcpy(new_key, key);
     void *new_value = malloc(n);
     memcpy(new_value, value, n);
@@ -24,7 +24,8 @@ void set_value(HashMap *map, char *key, void *value, size_t n) {
     if (cur_slot == NULL) {
         map->buckets[bucket] = new_slot;
     } else {
-        while (cur_slot->next)
+        Slot *prev_slot = NULL;
+        while (cur_slot) {
             if (! strcmp(cur_slot->key, key)) {
                 // Updating the current value
                 free(new_slot);
@@ -33,9 +34,12 @@ void set_value(HashMap *map, char *key, void *value, size_t n) {
                 cur_slot->value = new_value;
                 cur_slot->size = n;
                 return;
-            } else
+            } else {
+                prev_slot = cur_slot;
                 cur_slot = cur_slot->next;
-        cur_slot->next = new_slot;
+            }
+        }
+        prev_slot->next = new_slot;
     }
 }
 
@@ -44,11 +48,13 @@ void *get_value(HashMap *map, char *key, size_t *size) {
     Slot *cur_slot = map->buckets[bucket];
     if (cur_slot != NULL) {
         while(cur_slot)
-            if (! strcmp(cur_slot->key, key))
+            if (! strcmp(cur_slot->key, key)) {
+                *size = cur_slot->size;
                 return cur_slot->value;
-            else
+            } else
                 cur_slot = cur_slot->next;
     }
+    *size = 0;
     return NULL;
 }
 

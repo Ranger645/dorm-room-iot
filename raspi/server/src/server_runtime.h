@@ -45,6 +45,8 @@ ClientSlot *head;
 
 pthread_t udp_thread;
 
+Config *configuration;
+
 // Server functions
 int create_server(int port);
 void *udp_handler(void *args);
@@ -59,5 +61,7 @@ void *handle_client(void *targs);
 void handle_client_cleanup(void *targs);
 void cmd_execute(char **command, int arg_count, ClientData *args);
 void cmd_client_restart(char **command, int arg_count, ClientData *args);
+void cmd_config_subscribe(char **command, int arg_count, ClientData *args);
+void cmd_set_config_value(char **command, int arg_count, ClientData *args);
 
 #endif

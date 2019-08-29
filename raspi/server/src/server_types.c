@@ -11,11 +11,12 @@ int send_client_data(ClientData *data, void *to_send, size_t size) {
     if (data->client_dead)
         return 0;
 
-    ssize_t bytes_written = 0;
+    int bytes_written = 0;
     while (bytes_written < size) {
-        ssize_t result = write(data->socket_id, to_send + bytes_written, size - bytes_written);
+        int result = (int) send(data->socket_id, to_send + bytes_written, size - bytes_written, 0);
         if (result < 0) {
-            fprintf(stderr, "Socket send error on FD %d, closing connection.\n", data->socket_id);
+            fprintf(stderr, "Socket send error on FD %d, closing connection. ", data->socket_id);
+            check_error(result);
             end_client(data);
             return -1;
         }
@@ -28,6 +29,13 @@ void end_client(ClientData *data) {
     pthread_mutex_lock(data->lock_id);
 	data->continue_client = 0;
 	pthread_mutex_unlock(data->lock_id);
+}
+
+// Handles any error in the sockets:
+void check_error(int status) {
+    if (status < 0) {
+        printf("Socket error: [%s]\n", strerror(errno));
+    }
 }
 
 // Client list api
@@ -43,25 +51,17 @@ void print_client_list(ClientSlot *list) {
 }
 
 ClientSlot *add_client_to_list(ClientData *data, ClientSlot *list) {
-    ClientSlot *head = list;
-
     // Creating the spot in the list for the client to reside in
 	ClientSlot *slot = malloc(sizeof(ClientSlot));
 	slot->data = data;
 	slot->prev = NULL;
-	slot->next = NULL;
+	slot->next = list;
 
-	// Adding the new client to the list of clients
-	if (! list) {
-		head = slot;
-	} else {
-		ClientSlot *cur = list;
-		while (cur->next)
-			cur = cur->next;
-		slot->prev = cur;
-		cur->next = slot;
-	}
-    return head;
+    if (list != NULL) {
+        list->prev = slot;
+    }
+
+    return slot;
 }
 
 // Maybe removes a client from the list if the client has its dead flag tripped

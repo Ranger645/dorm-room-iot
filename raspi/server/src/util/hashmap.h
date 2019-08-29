@@ -10,6 +10,7 @@
 #ifndef _HASHMAP_H
 #define _HASHMAP_H
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 

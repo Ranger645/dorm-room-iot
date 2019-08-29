@@ -4,7 +4,6 @@
 
 // Helper functions
 uint32_t get_ip_address(ClientData *client);
-void check_error(int status);
 void print_clients();
 uint32_t get_my_ip_address(int sockfd);
 void print_ip_address(uint32_t ip);
@@ -12,6 +11,9 @@ void print_ip_address(uint32_t ip);
 
 // The main function:
 int main(int argc, char *argv[]) {
+
+	// Initializing configuration:
+	configuration = init_config();
 
 	head = NULL;
 	fd_set fd_select;
@@ -49,15 +51,15 @@ int main(int argc, char *argv[]) {
 		if (continue_server) {
 			reap_clients();
 			if (FD_ISSET(server_id, &fd_select)) {
-				struct sockaddr_in client;
-				socklen_t client_size = sizeof(client);
+				struct sockaddr_in *client = malloc(sizeof(struct sockaddr_in));
+				socklen_t client_size = sizeof(*client);
 
-				int client_id = accept(server_id, (struct sockaddr*) &client, &client_size);
+				int client_id = accept(server_id, (struct sockaddr*) client, &client_size);
 				check_error(client_id);
 
-				ClientData *client_storage = create_client(client_id, &client);
+				ClientData *client_storage = create_client(client_id, client);
 				start_client(client_storage);
-			}	
+			}
 		}
 
 		// If a select error occurs, then we close.
@@ -197,7 +199,7 @@ ClientData *create_client(int client_id, struct sockaddr_in *client) {
 		cur->next = slot;
 	}
 	
-	printf("Created Client on FD: %u\n", client_id);
+	printf("Created Client with ip %" PRIu32 " FD: %u\n", client->sin_addr.s_addr, client_id);
 	return data;
 }
 
@@ -289,8 +291,15 @@ void *handle_client(void *targs) {
 				cmd_execute(command, arg_count, args);
 			} else  if (!strcmp(command[0], "client_restart")) {
 				// Clients should send this command when they restart from unexpected shutdown to clean up any server
-				// memory that is left around from the previous connection
+				// memory that is left around from the previous connection.
+				// [WARNING]: This should only be used if the sending client is assigned a static IP address in the DHCP server.
 				cmd_client_restart(command, arg_count, args);
+			} else  if (!strcmp(command[0], "config_subscribe")) {
+				// Adds this client as a subscriber for a given key
+				cmd_config_subscribe(command, arg_count, args);
+			} else  if (!strcmp(command[0], "config_set")) {
+				// Sets a new value in the configuration
+				cmd_set_config_value(command, arg_count, args);
 			} else {
 				printf("Invalid command: [%s]\n", buf);
 			}
@@ -307,6 +316,7 @@ void *handle_client(void *targs) {
 void handle_client_cleanup(void *targs) {
 	ClientData *client = (ClientData*) targs;
 	close(client->socket_id);
+	free(client->client);
 	pthread_mutex_destroy(client->lock_id);
 	free(client->lock_id);
 	client->client_dead = 1;
@@ -356,6 +366,14 @@ void cmd_client_restart(char **command, int arg_count, ClientData *args) {
 	}
 }
 
+void cmd_config_subscribe(char **command, int arg_count, ClientData *args) {
+	add_subscriber(configuration, command[1], args);
+}
+
+void cmd_set_config_value(char **command, int arg_count, ClientData *args) {
+	set_config_value(configuration, command[1], (void*) command[2], strlen(command[2]) + 1);
+}
+
 // Helper Functions
 
 uint32_t get_ip_address(ClientData *data) {
@@ -388,11 +406,4 @@ void print_ip_address(uint32_t ip) {
 	char_ip[2] = (0x00FF0000 & ip) >> 16;
 	char_ip[3] = (0xFF000000 & ip) >> 24;
 	printf("IP Address: %d.%d.%d.%d\n", char_ip[0], char_ip[1], char_ip[2], char_ip[3]);
-}
-
-// Handles any error in the sockets:
-void check_error(int status) {
-    if (status < 0) {
-        printf("Socket error: [%s]\n", strerror(errno));
-    }
 }

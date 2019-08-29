@@ -13,12 +13,16 @@ Config *init_config() {
 
 // Adds a client to the list of subscribers for a given key and sends the current value to that client
 void add_subscriber(Config *config, char *key, ClientData *data) {
-	printf("Adding FD %d as a subscriber to key %s", data->socket_id, key);
 	set_value(config->key_subscribers, key, data, sizeof(ClientData));
-	size_t value_size;
+	size_t value_size = 0;
 	void *value = get_value(config->key_values, key, &value_size);
+	if (value == NULL && value_size == 0) {
+		value = "<null>";
+		value_size = 7;
+	}
 	if (send_value_to_client(value, value_size, data) > 0) {
-		size_t size;
+		// If the send is successful, we add the client that requested a subscribe to the list of subscribed clients.
+		size_t size = 0;
 		ClientSlot *client_list = add_client_to_list(data, (ClientSlot*) get_value(config->key_subscribers, key, &size));
 		set_value(config->key_subscribers, key, client_list, sizeof(ClientSlot));
 	}
@@ -35,6 +39,11 @@ void set_config_value(Config *config, char *key, void* value, size_t size) {
 // Saves the config to a persistent file
 void save_persistent_config(Config *config) {
 	fprintf(stderr, "[WARNING]: config_manager:save_persistent_config/1 not implemented");
+}
+
+// Checks for dead clients and removes them from the subscriber list if they exist
+void reap_dead_subscribers() {
+	
 }
 
 // Saves config to persistent storage and deletes in memory copy
