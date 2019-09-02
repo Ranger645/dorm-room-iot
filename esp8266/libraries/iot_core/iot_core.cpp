@@ -70,5 +70,5 @@ void IotCore::set_server_ip() {
 }
 
 void IotCore::send_command(WiFiClient client, char *command) {
-  	client.print(command);
+  	client.println(command);
 }

@@ -32,8 +32,11 @@ void end_client(ClientData *data); // sets continue_client to 0 with lock
 void check_error(int status);
 
 // Client list functions:
+void print_client_list(ClientSlot *list);
 ClientSlot *add_client_to_list(ClientData *data, ClientSlot *list);
+ClientSlot *remove_client_data_from_list(ClientData *data, ClientSlot *list);
 ClientSlot *remove_client_from_list(ClientSlot *slot, ClientSlot *list);
+int compare_client_data(ClientData *a, ClientData *b);
 void send_to_all_clients_in_list(ClientSlot *list, void *to_send, size_t size);
 
 #endif

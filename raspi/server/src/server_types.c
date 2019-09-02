@@ -25,6 +25,7 @@ int send_client_data(ClientData *data, void *to_send, size_t size) {
     return 1;
 }
 
+// Will cause the client handler thread to eventually end
 void end_client(ClientData *data) {
     pthread_mutex_lock(data->lock_id);
 	data->continue_client = 0;
@@ -43,7 +44,7 @@ void check_error(int status) {
 void print_client_list(ClientSlot *list) {
 	ClientSlot *cur = list;
 	fprintf(stderr, "Clients List: ");
-	while (cur) {
+	while (cur != NULL) {
 		fprintf(stderr, "[%u: %d, %d]; ", cur->data->socket_id, cur->data->continue_client, cur->data->client_dead);
 		cur = cur->next;
 	}
@@ -52,6 +53,9 @@ void print_client_list(ClientSlot *list) {
 
 ClientSlot *add_client_to_list(ClientData *data, ClientSlot *list) {
     // Creating the spot in the list for the client to reside in
+    printf("Adding client to list:\n");
+    fprintf(stderr, "Method pointer: %p\n", list);
+    print_client_list(list);
 	ClientSlot *slot = malloc(sizeof(ClientSlot));
 	slot->data = data;
 	slot->prev = NULL;
@@ -60,29 +64,50 @@ ClientSlot *add_client_to_list(ClientData *data, ClientSlot *list) {
     if (list != NULL) {
         list->prev = slot;
     }
-
+    printf("Finished adding client\n");
+    print_client_list(slot);
     return slot;
 }
 
-// Maybe removes a client from the list if the client has its dead flag tripped
+// Removes the first matchin client data slot from the list
+ClientSlot *remove_client_data_from_list(ClientData *data, ClientSlot *list) {
+    printf("Removing client data from list:\n");
+    print_client_list(list);
+    ClientSlot *cur = list;
+    while (cur) {
+        if (! compare_client_data(data, cur->data)) {
+            ClientSlot *new = remove_client_from_list(cur, list);
+            printf("Finished removing client:\n");
+            print_client_list(new);
+            return new;
+        }
+        cur = cur->next;
+    }
+    printf("Finished removing client:\n");
+    print_client_list(list);
+    return list;
+}
+
 // returns 1 if the client was removed and 0 if nothing happened
 ClientSlot *remove_client_from_list(ClientSlot *slot, ClientSlot *list) {
-    if (slot->data->client_dead) {
-        // Freeing the client data:
-        free(slot->data);
-
-        // Removing the client connection from the list of clients
-        if (slot->prev)
-            slot->prev->next = slot->next;
-        if (slot->next)
-            slot->next->prev = slot->prev;
-        if (slot == list)
-            list = slot->next;
-        free(slot);
-        slot = NULL;
-        return list;
-    }
+    // Removing the client connection from the list of clients
+    if (slot->prev)
+        slot->prev->next = slot->next;
+    if (slot->next)
+        slot->next->prev = slot->prev;
+    if (slot == list)
+        list = list->next;
+    free(slot);
+    slot = NULL;
     return list;
+}
+
+int compare_client_data(ClientData *a, ClientData *b) {
+    if (a->socket_id == b->socket_id && a->client->sin_addr.s_addr == b->client->sin_addr.s_addr)
+        return 0;
+    if (a->socket_id > b->socket_id)
+        return -1;
+    return 1;
 }
 
 void send_to_all_clients_in_list(ClientSlot *list, void *to_send, size_t size) {

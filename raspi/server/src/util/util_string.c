@@ -55,3 +55,19 @@ char **space_parse(char *str, int *count) {
 	free(name);
 	return list;
 }
+
+void free_string_list(char **string_list, size_t len) {
+	for (int i = 0; i < len; i++)
+		free(string_list[i]);
+	free(string_list);
+}
+
+void print_string_list(char **string_list, size_t len) {
+	printf("[");
+	for (int i = 0; i < len; i++)
+		if (i == len - 1)
+			printf("%s", string_list[i]);
+		else
+			printf("%s, ", string_list[i]);
+	printf("]\n");
+}

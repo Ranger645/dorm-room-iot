@@ -42,17 +42,17 @@ void setup() {
 
   iot.set_server_ip();
 
-  // Testing connectiong and purging any previously connected clients:
-  Serial.print("Testing connection...");
-  WiFiClient client;
-  
-  while (!client.connect(iot.server_ip, SERVER_PORT)) {
-    Serial.print("[E]");
-    delay(5000);
-  }
-  Serial.println(" Success!");
-  iot.send_command(client, "client_restart");
-  client.stop();
+//  // Testing connectiong and purging any previously connected clients:
+//  Serial.print("Testing connection...");
+//  WiFiClient client;
+//  
+//  while (!client.connect(iot.server_ip, SERVER_PORT)) {
+//    Serial.print("[E]");
+//    delay(5000);
+//  }
+//  Serial.println(" Success!");
+//  iot.send_command(client, "client_restart");
+//  client.stop();
 
   initialize_grid();
 
@@ -60,15 +60,13 @@ void setup() {
 
 void loop() {
 
-  Serial.print("Connecting to server...");
-
   // Use WiFiClient class to create TCP connections
   WiFiClient client;
   if (!client.connect(iot.server_ip, SERVER_PORT)) {
-    Serial.println("connection failed");
     return;
   }
   Serial.println("Connected.");
+  iot.send_command(client, "client_restart\n");
 
 
   // Subscribing to the light grid config value:

@@ -3,6 +3,8 @@
 
 HashMap *create_hashmap() {
     HashMap *map = (HashMap*) malloc(sizeof(HashMap));
+    map->key_count = 0;
+    pthread_mutex_init(&map->map_lock, NULL);
     for (int i = 0; i < NUM_BUCKETS; i++)
         map->buckets[i] = NULL;
     return map;
@@ -11,9 +13,16 @@ HashMap *create_hashmap() {
 void set_value(HashMap *map, char *key, void *value, size_t n) {
     Slot *new_slot = (Slot*) malloc(sizeof(Slot));
     char *new_key = (char*) malloc(sizeof(char) * (strlen(key) + 1));
+    void *new_value;
+    if (value == NULL) {
+        new_value = NULL;
+        n = 0;
+    } else {
+        new_value = malloc(n);
+        memcpy(new_value, value, n);
+    }
     strcpy(new_key, key);
-    void *new_value = malloc(n);
-    memcpy(new_value, value, n);
+
     new_slot->key = new_key;
     new_slot->value = new_value;
     new_slot->size = n;
@@ -21,6 +30,7 @@ void set_value(HashMap *map, char *key, void *value, size_t n) {
 
     unsigned long bucket = hash(key) % NUM_BUCKETS;
     Slot *cur_slot = map->buckets[bucket];
+    pthread_mutex_lock(&map->map_lock);
     if (cur_slot == NULL) {
         map->buckets[bucket] = new_slot;
     } else {
@@ -28,11 +38,11 @@ void set_value(HashMap *map, char *key, void *value, size_t n) {
         while (cur_slot) {
             if (! strcmp(cur_slot->key, key)) {
                 // Updating the current value
-                free(new_slot);
                 free(new_slot->key);
-                free(cur_slot->value);
+                free(new_slot);
                 cur_slot->value = new_value;
                 cur_slot->size = n;
+                pthread_mutex_unlock(&map->map_lock);
                 return;
             } else {
                 prev_slot = cur_slot;
@@ -41,21 +51,38 @@ void set_value(HashMap *map, char *key, void *value, size_t n) {
         }
         prev_slot->next = new_slot;
     }
+    map->key_count++;
+    pthread_mutex_unlock(&map->map_lock);
 }
 
 void *get_value(HashMap *map, char *key, size_t *size) {
     unsigned long bucket = hash(key) % NUM_BUCKETS;
     Slot *cur_slot = map->buckets[bucket];
-    if (cur_slot != NULL) {
-        while(cur_slot)
-            if (! strcmp(cur_slot->key, key)) {
-                *size = cur_slot->size;
-                return cur_slot->value;
-            } else
-                cur_slot = cur_slot->next;
-    }
+    while(cur_slot != NULL)
+        if (! strcmp(cur_slot->key, key)) {
+            *size = cur_slot->size;
+            return cur_slot->value;
+        } else
+            cur_slot = cur_slot->next;
     *size = 0;
     return NULL;
+}
+
+// Returns a list of keys allocated on the HEAP
+char **get_keys(HashMap *map, size_t *len) {
+    char **keys = malloc(sizeof(char*) * map->key_count);
+    int current_key = 0;
+    for (int i = 0; i < NUM_BUCKETS; i++) {
+        Slot *slot = map->buckets[i];
+        while (slot) {
+            char *key = malloc(sizeof(char) * strlen(slot->key));
+            strcpy(key, slot->key);
+            keys[current_key++] = key;
+            slot = slot->next;
+        }
+    }
+    *len = map->key_count;
+    return keys;
 }
 
 void *remove_value(HashMap *map, char *key, size_t *size) {
@@ -63,7 +90,7 @@ void *remove_value(HashMap *map, char *key, size_t *size) {
     Slot *cur_slot = map->buckets[bucket];
     Slot *previous_slot = NULL;
     if (cur_slot != NULL)
-        while(cur_slot) {
+        while (cur_slot) {
             if (! strcmp(cur_slot->key, key)){
                 void *value = cur_slot->value;
                 if (previous_slot == NULL)
@@ -73,6 +100,7 @@ void *remove_value(HashMap *map, char *key, size_t *size) {
                 free(cur_slot->key);
                 free(cur_slot->value);
                 free(cur_slot);
+                map->key_count--;
                 return value;
             } else {
                 previous_slot = cur_slot;
@@ -86,6 +114,7 @@ int free_hashmap(HashMap *map) {
     int keys_freed = 0;
     Slot *cur = NULL;
     Slot *prev = NULL;
+    pthread_mutex_lock(&map->map_lock);
     for (int i = 0; i < NUM_BUCKETS; i++) {
         cur = map->buckets[i];
         while (cur) {
@@ -97,6 +126,8 @@ int free_hashmap(HashMap *map) {
             keys_freed++;
         }
     }
+    pthread_mutex_unlock(&map->map_lock);
+    pthread_mutex_destroy(&map->map_lock);
     free(map);
     return keys_freed;
 }

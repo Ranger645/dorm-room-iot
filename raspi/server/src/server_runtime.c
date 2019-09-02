@@ -181,23 +181,8 @@ ClientData *create_client(int client_id, struct sockaddr_in *client) {
 	data->continue_client = 1;
 	data->client_dead = 0;
 	data->lock_id = mutex;
-	
-	// Creating the spot in the list for the client to reside in
-	ClientSlot *slot = malloc(sizeof(ClientSlot));
-	slot->data = data;
-	slot->prev = NULL;
-	slot->next = NULL;
 
-	// Adding the new client to the list of clients
-	if (! head) {
-		head = slot;
-	} else {
-		ClientSlot *cur = head;
-		while (cur->next)
-			cur = cur->next;
-		slot->prev = cur;
-		cur->next = slot;
-	}
+	head = add_client_to_list(data, head);
 	
 	printf("Created Client with ip %" PRIu32 " FD: %u\n", client->sin_addr.s_addr, client_id);
 	return data;
@@ -284,7 +269,7 @@ void *handle_client(void *targs) {
 			int arg_count = 0;
 			char **command = space_parse(buf, &arg_count);
 
-			printf("Client sent command: %s\n", buf);
+			printf("Client %d sent command: %s\n", args->socket_id, buf);
 			if (!strcmp(command[0], "execute")) {
 				// Executes the given command as if it was a bash terminal and links the socket to the input and output
 				// of the spawned bash processes
@@ -315,6 +300,9 @@ void *handle_client(void *targs) {
 
 void handle_client_cleanup(void *targs) {
 	ClientData *client = (ClientData*) targs;
+	// removing this client from any subscribed keys:
+	printf("Starting to reap client on socket %d\n", client->socket_id);
+	remove_subscriber(configuration, client);
 	close(client->socket_id);
 	free(client->client);
 	pthread_mutex_destroy(client->lock_id);
@@ -381,13 +369,7 @@ uint32_t get_ip_address(ClientData *data) {
 }
 
 void print_clients() {
-	ClientSlot *cur = head;
-	fprintf(stderr, "Clients List: ");
-	while (cur) {
-		fprintf(stderr, "%u: %d; ", cur->data->socket_id, cur->data->continue_client);
-		cur = cur->next;
-	}
-	fprintf(stderr, "\n");
+	print_client_list(head);
 }
 
 uint32_t get_my_ip_address(int sockfd) {
