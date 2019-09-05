@@ -12,13 +12,12 @@ void print_ip_address(uint32_t ip);
 // The main function:
 int main(int argc, char *argv[]) {
 
-	// Initializing configuration:
-	configuration = init_config();
-
 	head = NULL;
 	fd_set fd_select;
 	struct timeval timeout;
 	int port = SERVER_PORT;
+
+	Daemon *test = start_daemon("python3 /home/pi/server/src/daemons/test_daemon/test_daemon.py", ALWAYS_RESTART, head);
 
 	if (argc > 1)
 		port = atoi(argv[1]);
@@ -71,6 +70,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	close_server(&continue_server);
+	free_daemon(test);
 	return 0;
 }
 
@@ -177,6 +177,7 @@ ClientData *create_client(int client_id, struct sockaddr_in *client) {
 	pthread_mutex_t *mutex = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(mutex, NULL);
 	data->socket_id = client_id;
+	data->client_id = client_id_index++;
 	data->client = client;
 	data->continue_client = 1;
 	data->client_dead = 0;
@@ -301,8 +302,6 @@ void *handle_client(void *targs) {
 void handle_client_cleanup(void *targs) {
 	ClientData *client = (ClientData*) targs;
 	// removing this client from any subscribed keys:
-	printf("Starting to reap client on socket %d\n", client->socket_id);
-	remove_subscriber(configuration, client);
 	close(client->socket_id);
 	free(client->client);
 	pthread_mutex_destroy(client->lock_id);
@@ -355,11 +354,11 @@ void cmd_client_restart(char **command, int arg_count, ClientData *args) {
 }
 
 void cmd_config_subscribe(char **command, int arg_count, ClientData *args) {
-	add_subscriber(configuration, command[1], args);
+	//add_subscriber(configuration, command[1], args);
 }
 
 void cmd_set_config_value(char **command, int arg_count, ClientData *args) {
-	set_config_value(configuration, command[1], (void*) command[2], strlen(command[2]) + 1);
+	//set_config_value(configuration, command[1], (void*) command[2], strlen(command[2]) + 1);
 }
 
 // Helper Functions

@@ -25,6 +25,7 @@
 #include "server_types.h"
 #include "config/config_manager.h"
 #include "util/util_string.h"
+#include "daemons/daemon_interface.h"
 
 #define CLIENT_QUEUE_LEN 10
 #define SERVER_PORT 10101
@@ -42,6 +43,7 @@ pthread_mutex_t client_list_access_lock;
 int server_id = -1;
 char continue_server = 1;
 ClientSlot *head;
+int client_id_index = 0;
 
 pthread_t udp_thread;
 

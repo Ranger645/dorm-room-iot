@@ -15,6 +15,7 @@
 typedef struct ClientData {
 	struct sockaddr_in *client;
 	int socket_id;
+	int client_id;
 	char continue_client;
 	char client_dead;
 	pthread_t thread_id;
