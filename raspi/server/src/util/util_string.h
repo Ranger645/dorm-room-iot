@@ -10,6 +10,7 @@
 #include <string.h>
 
 char **space_parse(char *str, int *count);
+char *string_join(char **string_list, size_t len, char *delim);
 void free_string_list(char **string_list, size_t len);
 void print_string_list(char **string_list, size_t len);
 

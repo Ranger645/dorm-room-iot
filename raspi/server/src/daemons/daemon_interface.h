@@ -4,6 +4,7 @@
 #define DAEMON_INTERFACE_H
 
 #include <stdio.h> 
+#include <stdlib.h>
 #include <sys/types.h> 
 #include <sys/wait.h>
 #include <signal.h>
@@ -29,12 +30,13 @@ typedef struct DaemonStuct {
     int output; // Pipe end to write to (output -> Daemon)
     int input; // Pipe end to read from (Daemon -> input)
     int restart_flags;
-    ClientSlot *clients_list
+    ClientSlot **clients_list;
 } Daemon;
 
-Daemon *start_daemon(char *command, int flags, ClientSlot *clients_list);
+Daemon *start_daemon(char *command, int flags, ClientSlot **clients_list);
 void send_to_daemon(int client_id, char *message, Daemon *daemon);
 void *handle_daemon(void *targs);
+void send_eof_to_daemon(Daemon *daemon);
 void free_daemon(Daemon *daemon);
 
 #endif

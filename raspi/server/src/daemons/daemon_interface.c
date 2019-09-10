@@ -3,6 +3,7 @@
 
 // private
 void daemon_send_to_client(Daemon *daemon, int client_id, char* buffer, size_t size);
+void raw_send_to_daemon(char* message, Daemon *daemon, size_t len);
 
 /*
  * Forks the process, establishes the pipes for communicating back and forth,
@@ -10,7 +11,7 @@ void daemon_send_to_client(Daemon *daemon, int client_id, char* buffer, size_t s
  * command: string bash command to be run to start this daemon
  * flags: flags to determine restart method
  */
-Daemon *start_daemon(char *command, int flags, ClientSlot *clients_list) {
+Daemon *start_daemon(char *command, int flags, ClientSlot **clients_list) {
 
     Daemon *daemon = NULL;
     int s2d[2];
@@ -59,7 +60,11 @@ void send_to_daemon(int client_id, char *message, Daemon *daemon) {
     sprintf(string_id, "%d ", client_id);
     int message_len = strlen(string_id) + strlen(message) + 1;
     char prepended_message[message_len];
-    write(daemon->output, prepended_message, message_len);
+    prepended_message[0] = 0;
+    strcat(prepended_message, string_id);
+    strcat(prepended_message, message);
+    prepended_message[message_len - 1] = '\n';
+    raw_send_to_daemon(prepended_message, daemon, message_len);
 }
 
 /*
@@ -88,7 +93,7 @@ void *handle_daemon(void *targs) {
 				buf[i] = 0;
 			int bytes = read(daemon->input, buf, DAEMON_COMMAND_MAX_SIZE);
 
-            printf("Received command %s of length %d from daemon.\n", buf, bytes);
+            // printf("Received command %s of length %d from daemon.\n", buf, bytes);
             int command_word_count;
             char **command = space_parse(buf, &command_word_count);
 
@@ -97,20 +102,8 @@ void *handle_daemon(void *targs) {
                 if (! strcmp(command[0], "send_to_client") && command_word_count > 2) {
                     // send_to_client <client-id> <message>
                     int client_id = atoi(command[1]);
-                    int message_len = 0;
-                    for (int i = 2; i < command_word_count; i++)
-                        message_len += strlen(command[i]) + 1;
-                    char client_command[message_len];
-                    int command_iter = 0;
-                    for (int i = 2; i < command_word_count; i++) {
-                        int word_size = strlen(command[i]);
-                        for (int n = 0; n < word_size; n++)
-                            client_command[command_iter++] = command[i][n];
-                        if (i == command_word_count - 1)
-                            client_command[command_iter++] = '\n';
-                        else
-                            client_command[command_iter++] = ' ';
-                    }
+                    char *client_command = string_join(command + 2, command_word_count - 2, " ");
+                    int message_len = strlen(client_command) + 1;
                     daemon_send_to_client(daemon, client_id, client_command, message_len);
                 }
             }
@@ -124,6 +117,11 @@ void *handle_daemon(void *targs) {
     return NULL;
 }
 
+void send_eof_to_daemon(Daemon *daemon) {
+    char eof = EOF;
+    raw_send_to_daemon(&eof, daemon, 1);
+}
+
 void free_daemon(Daemon *daemon) {
     kill(daemon->daemon_process, SIGTERM);
     int status;
@@ -135,8 +133,10 @@ void free_daemon(Daemon *daemon) {
 
 // private
 
+// Takes in a null terminated string (buffer) and reformats it to send to the client
 void daemon_send_to_client(Daemon *daemon, int client_id, char* buffer, size_t size) {
-    ClientSlot *slot = daemon->clients_list;
+    buffer[size - 1] = '\n'; // Switching the null terminator for a newline
+    ClientSlot *slot = *(daemon->clients_list);
     while(slot != NULL) {
         if (slot->data->client_id == client_id) {
             send_client_data(slot->data, (void*) buffer, size);
@@ -145,4 +145,8 @@ void daemon_send_to_client(Daemon *daemon, int client_id, char* buffer, size_t s
         slot = slot->next;
     }
     fprintf(stderr, "Not able to send to client with that id. Client doesn't exist.\n");
+}
+
+void raw_send_to_daemon(char* message, Daemon *daemon, size_t len) {
+    write(daemon->output, message, len);
 }

@@ -12,6 +12,7 @@ int IotCore::connect_to_wifi() {
 		delay(500);
 		count++;
 	}
+	WiFi.setSleepMode(WIFI_NONE_SLEEP);
 	return count < WIFI_CONNECT_RETRIES && WiFi.status() == WL_CONNECTED;
 }
 
@@ -37,27 +38,29 @@ void IotCore::set_server_ip() {
 		broadcast_ip[i] = WiFi.localIP()[i];
 	broadcast_ip[3] = 255;
 
-	Serial.println("Broadcasting ip request");
-	udp.beginPacket(broadcast_ip, UDP_PORT);
-	udp.write("ip_address", 10);
-	udp.endPacket();
-
-	// Waiting for a response with the server IP address:
 	int packetSize = 0;
-	while (!packetSize)
-	{
-		packetSize = udp.parsePacket();
-		if (packetSize)
-		{
-			Serial.printf("Received %d bytes from %s, port %d\n", packetSize, udp.remoteIP().toString().c_str(), udp.remotePort());
-			int len = udp.read(incomingPacket, 255);
-			if (len > 0)
-			{
-				Serial.println("WARNING: Received more bytes than expected");
-			}
-			incomingPacket[packetSize] = 0;
 
-			Serial.printf("UDP packet contents: %04u\n", incomingPacket);
+	while (packetSize == 0) {
+
+		Serial.println("Broadcasting ip request");
+		udp.beginPacket(broadcast_ip, UDP_PORT);
+		udp.write("ip_address", 10);
+		udp.endPacket();
+
+		// Waiting for a response with the server IP address:
+		unsigned long time = millis();
+		while (!packetSize && millis() - time < 1000) {
+			packetSize = udp.parsePacket();
+			if (packetSize) {
+				Serial.printf("Received %d bytes from %s, port %d\n", packetSize, udp.remoteIP().toString().c_str(), udp.remotePort());
+				int len = udp.read(incomingPacket, 255);
+				if (len > 0) {
+					Serial.println("WARNING: Received more bytes than expected");
+				}
+				incomingPacket[packetSize] = 0;
+
+				Serial.printf("UDP packet contents: %04u\n", incomingPacket);
+			}
 		}
 	}
 

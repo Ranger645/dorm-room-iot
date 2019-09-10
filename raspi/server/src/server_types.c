@@ -45,7 +45,7 @@ void print_client_list(ClientSlot *list) {
 	ClientSlot *cur = list;
 	fprintf(stderr, "Clients List: ");
 	while (cur != NULL) {
-		fprintf(stderr, "[%u: %d, %d]; ", cur->data->socket_id, cur->data->continue_client, cur->data->client_dead);
+		fprintf(stderr, "[%d: %u, %d, %d]; ", cur->data->client_id, cur->data->socket_id, cur->data->continue_client, cur->data->client_dead);
 		cur = cur->next;
 	}
 	fprintf(stderr, "\n");

@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
 	struct timeval timeout;
 	int port = SERVER_PORT;
 
-	Daemon *test = start_daemon("python3 /home/pi/server/src/daemons/test_daemon/test_daemon.py", ALWAYS_RESTART, head);
+	config_daemon = start_daemon("python3 /home/pi/server/src/daemons/config_daemon/config_daemon.py", ALWAYS_RESTART, &head);
 
 	if (argc > 1)
 		port = atoi(argv[1]);
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	close_server(&continue_server);
-	free_daemon(test);
+	free_daemon(config_daemon);
 	return 0;
 }
 
@@ -201,6 +201,7 @@ int reap_clients() {
 		slot = slot->next;
 		if (to_destroy->data->client_dead) {
 			fprintf(stderr, "Reaping client on FD: %u\n", to_destroy->data->socket_id);
+			send_to_daemon(to_destroy->data->client_id, "closed", config_daemon);
 			reaped += kill_client(to_destroy);
 		}
 	}
@@ -280,12 +281,15 @@ void *handle_client(void *targs) {
 				// memory that is left around from the previous connection.
 				// [WARNING]: This should only be used if the sending client is assigned a static IP address in the DHCP server.
 				cmd_client_restart(command, arg_count, args);
-			} else  if (!strcmp(command[0], "config_subscribe")) {
+			} else  if (!strcmp(command[0], "config_subscribe") && arg_count == 2) {
 				// Adds this client as a subscriber for a given key
 				cmd_config_subscribe(command, arg_count, args);
-			} else  if (!strcmp(command[0], "config_set")) {
+			} else  if (!strcmp(command[0], "config_set") && arg_count >= 3) {
 				// Sets a new value in the configuration
 				cmd_set_config_value(command, arg_count, args);
+			} else  if (!strcmp(command[0], "config_get") && arg_count >= 2) {
+				// Gets the current value in the configuration
+				cmd_get_config_value(command, arg_count, args);
 			} else {
 				printf("Invalid command: [%s]\n", buf);
 			}
@@ -355,10 +359,29 @@ void cmd_client_restart(char **command, int arg_count, ClientData *args) {
 
 void cmd_config_subscribe(char **command, int arg_count, ClientData *args) {
 	//add_subscriber(configuration, command[1], args);
+	// command = 'config_subscribe <key>'
+	char message[strlen("add_subscriber ") + strlen(command[1]) + 1];
+	sprintf(message, "add_subscriber %s", command[1]);
+	send_to_daemon(args->client_id, message, config_daemon);
 }
 
 void cmd_set_config_value(char **command, int arg_count, ClientData *args) {
 	//set_config_value(configuration, command[1], (void*) command[2], strlen(command[2]) + 1);
+	// command = config_set <key> <value>
+	char *command_to_send = string_join(command + 2, arg_count - 2, " ");
+	char message[strlen("set_value ") + strlen(command[1]) + strlen(command_to_send) + 1];
+	sprintf(message, "set_value %s %s", command[1], command_to_send);
+	// printf("Sending message to daemon: %s\n", command_to_send);
+	send_to_daemon(args->client_id, message, config_daemon);
+	free(command_to_send);
+}
+
+void cmd_get_config_value(char **command, int arg_count, ClientData *args) {
+	//
+	// command = config_get <key>
+	char message[strlen("get_config ") + strlen(command[1]) + 1];
+	sprintf(message, "get_config %s", command[1]);
+	send_to_daemon(args->client_id, message, config_daemon);
 }
 
 // Helper Functions

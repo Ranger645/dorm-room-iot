@@ -15,7 +15,7 @@ mkdir $BUILD_DIR
 
 # Compiling source
 SOURCE_CODE_DIR="${ROOT}/src"
-gcc -std=gnu99 -pthread -Wall -g -o $BUILD_DIR/run $SOURCE_CODE_DIR/*.c $SOURCE_CODE_DIR/config/*.c $SOURCE_CODE_DIR/util/*.c $SOURCE_CODE_DIR/daemons/*.c
+gcc -std=gnu99 -pthread -Wall -g -o $BUILD_DIR/run $SOURCE_CODE_DIR/*.c $SOURCE_CODE_DIR/util/*.c $SOURCE_CODE_DIR/daemons/*.c
 
 # Moving scripts into build
 cp -r $ROOT/scripts $BUILD_DIR/scripts

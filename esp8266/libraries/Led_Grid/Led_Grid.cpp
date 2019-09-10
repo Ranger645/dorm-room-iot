@@ -241,6 +241,8 @@ void LedGrid::text() {
 				display_string_index = 0;
 		}
 	}
+	if (animation_speed < 100)
+		delay(100 - animation_speed);
 }
 
 void LedGrid::setup_time(int red, int green, int blue, int brightness, int speed, bool rainbow) {
@@ -289,6 +291,21 @@ void LedGrid::draw_time_number(int number, int slot) {
 			bit_index++;
 			bit_number = bit_index % 8;
 			byte_index = bit_index / 8;
+		}
+	}
+}
+
+void LedGrid::print_alphabet() {
+	int x = 0;
+	for (int i = 0; i < 448; i++) {
+		for (int n = 0; n < 8; n++) {
+			int shift = 7 - n;
+			Serial.print((alphabet[i] & (1 << shift)) != 0);
+			x++;
+			if (x >= 11) {
+				x = 0;
+				Serial.println("");
+			}
 		}
 	}
 }

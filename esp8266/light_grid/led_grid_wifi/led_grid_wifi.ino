@@ -40,22 +40,26 @@ void setup() {
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
 
-  iot.set_server_ip();
-
-//  // Testing connectiong and purging any previously connected clients:
-//  Serial.print("Testing connection...");
-//  WiFiClient client;
-//  
-//  while (!client.connect(iot.server_ip, SERVER_PORT)) {
-//    Serial.print("[E]");
-//    delay(5000);
-//  }
-//  Serial.println(" Success!");
-//  iot.send_command(client, "client_restart");
-//  client.stop();
+  // Testing connectiong and purging any previously connected clients:
+  WiFiClient client;
+  int failure_count = 0;
+  while (1) {
+    Serial.print("Testing connection...");
+    iot.set_server_ip();
+    while (!client.connect(iot.server_ip, SERVER_PORT) && failure_count < 3) {
+      Serial.print("[E]");
+      delay(1000);
+    }
+    if (failure_count < 3)
+      break;
+    else
+      failure_count = 0;
+  }
+  Serial.println(" Success!");
+  iot.send_command(client, "client_restart");
+  client.stop();
 
   initialize_grid();
-
 }
 
 void loop() {
@@ -63,6 +67,7 @@ void loop() {
   // Use WiFiClient class to create TCP connections
   WiFiClient client;
   if (!client.connect(iot.server_ip, SERVER_PORT)) {
+    delay(10000);
     return;
   }
   Serial.println("Connected.");
@@ -83,6 +88,11 @@ void loop() {
       Serial.println("Setting grid setting to " + grid_mode);
       apply_grid_arguments(grid_mode);
     }
+
+    if (light_mode == 5)
+      update_visualizer();
+    else if (light_mode == 8)
+      update_time();
     
     grid.update();
     delay(loop_delay);
@@ -93,7 +103,6 @@ void loop() {
   // This is NOT the same as 'unplugging' the internet connection or restarting the device.
   client.stop();
   Serial.println("Connection closed");
-  delay(1000);
 }
 
 // FUNCTIONAL FUNCTIONS
@@ -114,6 +123,10 @@ void apply_grid_arguments(String grid_mode) {
   grid.turn_off();
   light_mode = arguments[0].toInt();
   loop_delay = 20;
+  Serial.print("Arguments(");
+  for (int i = 0; i < arg_count; i++)
+    Serial.print(arguments[i] + ", ");
+  Serial.println(")");
   switch (light_mode) {
     case 1:
       grid.setup_solid_color(arguments[1].toInt(), arguments[2].toInt(), arguments[3].toInt(), arguments[4].toInt());
@@ -144,11 +157,6 @@ void apply_grid_arguments(String grid_mode) {
     default:
       grid.turn_off();
   }
-  
-  if (light_mode == 5)
-    update_visualizer();
-  else if (light_mode == 8)
-    update_time();
 }
 
 void update_time() {

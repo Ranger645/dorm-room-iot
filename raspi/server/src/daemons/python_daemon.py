@@ -19,21 +19,27 @@ class PythonDaemon:
                     break
         except EOFError as e:
             pass
+        except KeyboardInterrupt as e:
+            pass
         finally:
             self._on_terminate(state)
 
     def send_to_server(self, message):
-        print(str(message))
+        print(message)
         sys.stdout.flush()
 
     def send_to_client(self, client_id, message):
         # Command for sending data to a client
-        self.send_to_server("send_to_client " + str(client_id) + " " + str(message))
+        self.send_to_server("send_to_client %d %s" % (client_id, str(message)))
 
     def read_data_from_server(self):
         # Waits for and reads data from the server value should be given by the server in the form:
         #   <client-id> <message>
         # Returns client-id, message
         value = input("")
+        # sys.stderr.write("Daemon received: " + " ".join(["%x" % ord(v) for v in value]) + "\n") # Prints raw received bytes in hex
         parsed_data = value.split(" ")
-        return parsed_data[0], " ".join(parsed_data[1:])
+        return int(parsed_data[0]), " ".join(parsed_data[1:])
+
+    def log(self, message):
+        sys.stderr.write(message + "\n")

@@ -56,6 +56,21 @@ char **space_parse(char *str, int *count) {
 	return list;
 }
 
+char *string_join(char **string_list, size_t len, char *delim) {
+	int size = (len - 1) * strlen(delim) + 1; // start at one for the null term
+	for (int i = 0; i < len; i++) {
+		size += strlen(string_list[i]);
+	}
+	char *str = (char*) malloc(sizeof(char) * size);
+	str[0] = 0;
+	for (int i = 0; i < len; i++) {
+		strcat(str, string_list[i]);
+		if (i != len - 1)
+			strcat(str, delim);
+	}
+	return str;
+}
+
 void free_string_list(char **string_list, size_t len) {
 	for (int i = 0; i < len; i++)
 		free(string_list[i]);

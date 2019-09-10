@@ -23,7 +23,6 @@
 #include <poll.h>
 
 #include "server_types.h"
-#include "config/config_manager.h"
 #include "util/util_string.h"
 #include "daemons/daemon_interface.h"
 
@@ -47,7 +46,7 @@ int client_id_index = 0;
 
 pthread_t udp_thread;
 
-Config *configuration;
+Daemon *config_daemon;
 
 // Server functions
 int create_server(int port);
